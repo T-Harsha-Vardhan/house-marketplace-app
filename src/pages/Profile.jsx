@@ -25,20 +25,15 @@ function Profile() {
     try {
       if (auth.currentUser.displayName !== name) {
         // Update display name in Firebase
-        console.log(1, "here");
         await updateProfile(auth.currentUser, {
           displayName: name, // Correctly formatted as a property, not a list
         });
-
-        console.log(2, "here");
 
         // Update in Firestore
         const userRef = doc(db, "users", auth.currentUser.uid);
         await updateDoc(userRef, {
           name,
         });
-
-        console.log(3, "here");
       }
     } catch (error) {
       console.log(error);
@@ -49,7 +44,7 @@ function Profile() {
   const onChange = (e) => {
     setFormData((prevState) => ({
       ...prevState,
-      [e.target.id]: [e.target.value],
+      [e.target.id]: e.target.value,
     }));
   };
 
