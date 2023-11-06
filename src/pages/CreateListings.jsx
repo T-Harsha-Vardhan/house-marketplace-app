@@ -6,6 +6,12 @@ import {
   uploadBytesResumable,
   getDownloadURL,
 } from "firebase/storage";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  Timestamp,
+} from "firebase/firestore";
 import { db } from "../firebase.config";
 import { useNavigate } from "react-router-dom";
 import Spinner from "../Components/Spinner";
@@ -83,7 +89,7 @@ function CreateListings() {
       return;
     }
 
-    let geoLocation = {};
+    let geolocation = {};
     let location;
 
     if (geolocationEnabled) {
@@ -94,9 +100,9 @@ function CreateListings() {
       );
       const data = await response.json();
 
-      geoLocation.lat =
+      geolocation.lat =
         data.results.length > 0 && data.results[0]?.geometry.lat;
-      geoLocation.lng =
+      geolocation.lng =
         data.results.length > 0 && data.results[0]?.geometry.lng;
 
       if (data.total_results === 0) {
@@ -109,41 +115,65 @@ function CreateListings() {
         setLoading(false);
         toast.error("Please enter a correct address");
       }
-
-      //Store images in firebase
-      const storeImage = async (image) => {
-        return new Promise((resolve, reject) => {
-          const storage = getStorage();
-          const fileName = `${auth.currentUser.uid}-${image.name}-${uuidv4()}`;
-          const storageRef = ref(storage, "images/" + fileName);
-          const uploadTask = uploadBytesResumable(storageRef, image);
-          uploadTask.on(
-            "state_changed",
-            (snapshot) => {
-              console.log("done");
-            },
-            (error) => {
-              reject(error);
-            },
-            () => {
-              getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                resolve(downloadURL);
-              });
-            }
-          );
-        });
-      };
-
-      const imgUrls = await Promise.all(
-        [...images].map((image) => storeImage(image))
-      );
-
-      setLoading(false);
     } else {
-      geoLocation.lat = latitude;
-      geoLocation.lng = longitude;
+      geolocation.lat = latitude;
+      geolocation.lng = longitude;
       location = address;
     }
+
+    //Store images in firebase
+    const storeImage = async (image) => {
+      return new Promise((resolve, reject) => {
+        const storage = getStorage();
+        const fileName = `${auth.currentUser.uid}-${image.name}-${uuidv4()}`;
+        const storageRef = ref(storage, "images/" + fileName);
+        const uploadTask = uploadBytesResumable(storageRef, image);
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            console.log("done");
+          },
+          (error) => {
+            reject(error);
+          },
+          () => {
+            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+              resolve(downloadURL);
+            });
+          }
+        );
+      });
+    };
+
+    const imgUrls = await Promise.all(
+      [...images].map((image) => storeImage(image))
+    ).catch((error) => {
+      setLoading(false);
+      toast.error("Images not uploaded");
+    });
+
+    const formDataCopy = {
+      ...formData,
+      imgUrls,
+      geolocation,
+      timestamp: serverTimestamp(),
+    };
+
+    delete formDataCopy.images;
+    delete formDataCopy.address;
+    delete formDataCopy.longitude;
+    delete formDataCopy.latitude;
+    formDataCopy.bedrooms = parseInt(formDataCopy.bedrooms);
+    formDataCopy.bathrooms = parseInt(formDataCopy.bathrooms);
+    formDataCopy.discountedPrice = parseInt(formDataCopy.discountedPrice);
+    formDataCopy.regularPrice = parseInt(formDataCopy.regularPrice);
+    location && (formDataCopy.location = location);
+    !formDataCopy.offer && delete formDataCopy.discountedPrice;
+
+    const docRef = await addDoc(collection(db, "listings"), formDataCopy);
+    setLoading(false);
+    toast.success("Listings saved");
+    navigate(`/category/${formDataCopy.type}/${docRef.id}`);
   };
   const onMutate = (e) => {
     let boolean = null;
