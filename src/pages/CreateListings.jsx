@@ -144,8 +144,6 @@ function CreateListings() {
       });
     };
 
-    console.log(images);
-
     const imageUrls = await Promise.all(
       [...images].map((image) => storeImage(image))
     ).catch((error) => {
