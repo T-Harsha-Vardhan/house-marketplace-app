@@ -118,7 +118,6 @@ function CreateListings() {
     } else {
       geolocation.lat = latitude;
       geolocation.lng = longitude;
-      location = address;
     }
 
     //Store images in firebase
@@ -145,7 +144,9 @@ function CreateListings() {
       });
     };
 
-    const imgUrls = await Promise.all(
+    console.log(images);
+
+    const imageUrls = await Promise.all(
       [...images].map((image) => storeImage(image))
     ).catch((error) => {
       setLoading(false);
@@ -154,11 +155,12 @@ function CreateListings() {
 
     const formDataCopy = {
       ...formData,
-      imgUrls,
+      imageUrls,
       geolocation,
       timestamp: serverTimestamp(),
     };
 
+    formDataCopy.location = address;
     delete formDataCopy.images;
     delete formDataCopy.address;
     delete formDataCopy.longitude;
@@ -167,7 +169,6 @@ function CreateListings() {
     formDataCopy.bathrooms = parseInt(formDataCopy.bathrooms);
     formDataCopy.discountedPrice = parseInt(formDataCopy.discountedPrice);
     formDataCopy.regularPrice = parseInt(formDataCopy.regularPrice);
-    location && (formDataCopy.location = location);
     !formDataCopy.offer && delete formDataCopy.discountedPrice;
 
     const docRef = await addDoc(collection(db, "listings"), formDataCopy);
