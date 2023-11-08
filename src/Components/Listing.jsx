@@ -52,7 +52,6 @@ function Listing() {
             ></div>
           </SwiperSlide>
         ))}
-        {console.log(listing)}
       </Swiper>
       <div
         className="shareIconDiv"
